@@ -73,12 +73,20 @@ Uses `Server=localhost,1433;User ID=sa;...` to point to the SQL Server running i
 
 ### For Windows Users (Local SQL Server)
 
-```JSON
+If you are running SQL Server 2025 Developer natively on Windows:
 
+```JSON
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=StudentsDb;Trusted_Connection=True;TrustServerCertificate=True;"
-  }
+    "DefaultConnection": "Server=localhost;Database=StudentsDb;User ID=sa;Password=YOUR_PASSWORD;TrustServerCertificate=True;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
 }
 ```
 
