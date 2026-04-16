@@ -1,0 +1,26 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest # SQL Server 2025 is also available but 2022 is stable
+    container_name: sql_server_db
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD} # Set your password in .env
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${DB_PASSWORD}' -Q 'SELECT 1' -b -C" ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    container_name: student_api_app
+    ports:
+      - "7010:8080" # Maps local port 7010 to container port 8080
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Ensure the password here matches the one set in the 'db' service above (.env)
+      - ConnectionStrings__DefaultConnection=Server=db;Database=StudentsDb;User ID=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;

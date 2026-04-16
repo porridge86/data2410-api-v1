@@ -31,3 +31,6 @@ Properties/serviceDependencies*.json
 
 # PDF styling
 pdf-style.css
+
+# setting
+.env
