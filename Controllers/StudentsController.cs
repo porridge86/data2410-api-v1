@@ -102,9 +102,44 @@ public class StudentsController(IConfiguration config) : ControllerBase
     {
         var studentsWithGrade = new List<Student>();
 
-        // Write code to calculate and update grades
+        // Task 1: Write code to calculate and update grades
+        using var conn = new SqlConnection(_connectionString);
+        await conn.OpenAsync(); // await conn.OpenAsync() is Asynchronous process. While the database is closed, the server's CPU continues to work on other requests. Recommended.
+        // while reader.Close() is a "synchronous" process. The server's processing completely stops and waits until the database has finished closing. If each process involves a "wait" state, the entire network becomes overloaded.
 
-        return studentsWithGrade;
+        // 1. get all students data from db
+        using var selectCmd = new SqlCommand("SELECT Id, Name, Course, Marks FROM Students", conn);
+        using var reader = await selectCmd.ExecuteReaderAsync();
+
+        var tempStudents = new List<Student>();
+        // data reader
+        while (await reader.ReadAsync())
+        {
+            tempStudents.Add(new Student
+            {
+                Id = reader.GetInt32(0),
+                Name = reader.GetString(1),
+                Course = reader.GetString(2),
+                Marks = reader.GetInt32(3)
+            });
+        }
+        await reader.CloseAsync(); // Close the reader asynchronously to improve server efficiency
+
+        // Calculate and update grades in db
+        foreach (var student in tempStudents)
+        {
+            student.Grade = GetGrade(student.Marks);
+
+            using var updateCmd = new SqlCommand("UPDATE Students SET Grade = @Grade WHERE Id = @Id", conn);
+            updateCmd.Parameters.AddWithValue("@Grade", student.Grade);
+            updateCmd.Parameters.AddWithValue("@Id", student.Id);
+            await updateCmd.ExecuteNonQueryAsync();
+
+            studentsWithGrade.Add(student);
+        }
+
+        // return together with status 200 OK
+        return Ok(studentsWithGrade);
     }
 
     [HttpGet("report")]
