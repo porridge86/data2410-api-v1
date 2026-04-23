@@ -123,29 +123,134 @@ INSERT INTO Students (Name, Course, Marks, Grade) VALUES
 ('Kjell Larsen', 'DATA1300', 45, NULL);
 ```
 
-## If we prepare a shared test data script before submission
+## 2-2. Automated Database Provisioning
 
-### seed_data.sql
+We are agreed to prepare a shared test data script before submission.
 
-```sql
-USE StudentsDb;
-GO
+This eliminates the need to manually re-enter data and ensures **"the same data state can be reproduced regardless of who executes it or where (environmental reproducibility)"**.
 
-TRUNCATE TABLE Students;
-GO
+To ensure environment consistency and simplify the development workflow, I implemented an automated database seeding process using Docker and SQL scripts.
 
-INSERT INTO Students (Name, Course, Marks, Grade) VALUES
--- ('Per Hansen', 'DATA2410', 95, NULL)
--- ('Per Hansen', 'DATA2410', 95, NULL)
-GO
+### 1. Infrastructure Setup
+
+* **Custom DB Image**: Created a `db.Dockerfile` based on `mssql/server:2022-latest` to include custom initialization logic.
+
+```dockerfile
+# Dockerfile for db
+# We have two dockerfile because the app (.NET) and the database (SQL Server) are separate environments, whitch means  two different containers!
+FROM mcr.microsoft.com/mssql/server:2022-latest
+
+USER root
+COPY init.sh /init.sh
+COPY seed_data.sql /seed_data.sql
+RUN chmod +x /init.sh
+
+USER mssql
+ENTRYPOINT ["/bin/bash", "-c", "/init.sh & /opt/mssql/bin/sqlservr"]
 ```
 
-### docker-compose.yml
+* **Initialization Script**:
+
+The reason for creating a custom `init.sh` is that SQL Server does not have a built-in automatic execution folder like MySQL.
+
+Developed `init.sh` to handle the "race condition" between the SQL Server startup and script execution.
+
+The script waits for the SQL engine to be fully operational before injecting data.
+
+```bash
+#!/bin/bash
+
+# Wait for SQL Server to start up before executing seed_data.sql
+# This is because SQL Server does not have an automated execution feature like MySQL does by default.
+echo "Waiting for SQL Server to start..."
+for i in {1..60}; do
+    /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C -Q "SELECT 1" &> /dev/null
+    if [ $? -eq 0 ]; then
+        echo "SQL Server is up - executing script"
+        # run seed_data.sql
+        /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C -i /seed_data.sql
+        break
+    fi
+    echo "Not ready yet..."
+    sleep 1
+done
+```
+
+* **Multi-Container Orchestration**: Configured `docker-compose.yml` with `healthcheck` and `depends_on`. This ensures the .NET API only attempts to connect once the database is healthy and the schema is ready.
 
 ```yml
-db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+services:
+  db:
+    # not auto-db
+    #    image: mcr.microsoft.com/mssql/server:2022-latest # SQL Server 2025 is also available but 2022 is stable
+    # auto-db creation
+    build:
+      context: . # # the folder where Dockerfile exits
+      dockerfile: db.Dockerfile # Dockerfile for DB
     container_name: sql_server_db
-    volumes:
-      - ./seed_data.sql:/seed_data.sql
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD} # Set your password in .env
+    healthcheck:
+      # By combining `depends_on` and `healthcheck`, we manage the service startup order, ensuring that the application is launched only after the database is fully prepared.
+      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${DB_PASSWORD}' -Q 'SELECT 1' -b -C" ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  app:
+    build: . # This uses a Dockerfile for .NET
+    container_name: student_api_app
+    ports:
+      - "7010:8080" # Maps local port 7010 to container port 8080
+    depends_on:
+      # By combining `depends_on` and `healthcheck`, we manage the service startup order, ensuring that the application is launched only after the database is fully prepared.
+      db:
+        condition: service_healthy
+    environment:
+      # Ensure the password here matches the one set in the 'db' service above (.env)
+      - ConnectionStrings__DefaultConnection=Server=db;Database=StudentsDb;User ID=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
+
 ```
+
+### 2. Database Seeding Logic
+
+* **Idempotent SQL Script**: Authored `seed_data.sql` using `IF NOT EXISTS` clauses for database and table creation. This ensures the script is **idempotent**, meaning it can be executed multiple times without causing errors or duplicate schemas.
+* **Test Data Population**: Automatically populated the `Students` table with 8 predefined student records (Norwegian dataset) to facilitate immediate testing of the API endpoints.
+
+### 3. Benefits from a Cloud & Networking Perspective
+
+* **Portability**: By containerizing the initialization logic, the entire environment—including its data state—can be reproduced on any machine (macOS, Windows, or Linux) with a single command: `docker compose up`.
+* **Scalability & DevOps**: This approach mimics professional CI/CD pipelines where infrastructure is provisioned automatically, reducing manual configuration errors and ensuring a "Single Source of Truth" for the testing environment.
+
+### 4. Setup Procedure
+
+Now we have the following files in the project's root folder:
+
+* `docker-compose.yml`
+* `Dockerfile` (Dockerfile for the application)
+* `db.Dockerfile` (Dockerfile for the database)
+* `init.sh` (for automatic database execution)
+* `seed_data.sql` (initial database data)
+* `.env` (for password settings)
+
+#### 2. Clean up old container and create a create container
+
+```bash
+docker compose down
+```
+
+```bash
+docker compose up --build
+```
+
+* Adding `--build` creates a custom image based on the newly created `db.Dockerfile`.
+
+#### 3. **Verification of Startup**
+
+If `SQL Server is up - executing script` is displayed in the terminal, automatic seeding (data insertion) was successful.
+
+#### 4. **Verification with Scalar**
+
+Access `http://localhost:7010/scalar/v1` and execute `GET /api/Students` to verify that data for 8 people has been inserted.

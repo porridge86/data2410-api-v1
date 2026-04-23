@@ -1,6 +1,11 @@
 services:
   db:
-    image: mcr.microsoft.com/mssql/server:2022-latest # SQL Server 2025 is also available but 2022 is stable
+    # not auto-db
+    #    image: mcr.microsoft.com/mssql/server:2022-latest # SQL Server 2025 is also available but 2022 is stable
+    # auto-db creation
+    build:
+      context: . # # the folder where Dockerfile exits
+      dockerfile: db.Dockerfile # Dockerfile for DB
     container_name: sql_server_db
     ports:
       - "1433:1433"
@@ -8,17 +13,18 @@ services:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${DB_PASSWORD} # Set your password in .env
     healthcheck:
+      # By combining `depends_on` and `healthcheck`, we manage the service startup order, ensuring that the application is launched only after the database is fully prepared.
       test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${DB_PASSWORD}' -Q 'SELECT 1' -b -C" ]
       interval: 10s
       timeout: 3s
       retries: 10
-
   app:
-    build: .
+    build: . # This uses a Dockerfile for .NET
     container_name: student_api_app
     ports:
       - "7010:8080" # Maps local port 7010 to container port 8080
     depends_on:
+      # By combining `depends_on` and `healthcheck`, we manage the service startup order, ensuring that the application is launched only after the database is fully prepared.
       db:
         condition: service_healthy
     environment:

@@ -16,4 +16,4 @@ WORKDIR /app
 COPY --from=build /app/out .
 
 # Start
-ENTRYPOINT ["dotnet", "DATA2410-api-v1.dll"]
+ENTRYPOINT ["dotnet", "data2410-api-v1.dll"]
