@@ -34,3 +34,6 @@ pdf-style.css
 
 # setting
 .env
+
+# Exclude report materials and drafts
+REPORT/

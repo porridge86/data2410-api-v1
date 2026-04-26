@@ -1,4 +1,65 @@
+
+# Student Management API (DATA2410 - Assignment 3)
+
+This repository contains a RESTful Web API built for the **DATA2410** course in OsloMet.
+
+This was a **group project** completed by [porridge86](https://github.com/porridge86/data2410-api-v1) and [sakha7445](https://github.com/sakha7445/data2410-api-v1).
+
+## 1. Introduction
+
+This project is a Student Management API built with **C# (.NET 10)** and **SQL Server**.
+As we developed this on **macOS**, we used **Docker** to run SQL Server. This ensures the application works the same way for everyone, regardless of their operating system.
+
+### Key Features
+
+* **Two-Tier Architecture**: The API and Database run in separate Docker containers.
+* **Microservices Design**: The system is flexible; you can move the database to the cloud (like Azure SQL) just by changing the connection settings.
+* **Automated Setup**: The database and test data are created automatically when the container starts.
+
+## 2. Environment Setup
+
+The system uses the following components:
+
+* **`docker-compose.yml`**: Manages both the API and Database.
+* **`Dockerfile` & `db.Dockerfile`**: Build the application and SQL Server images.
+* **`init.sh` & `seed_data.sql`**: Automatically create tables and insert 8 starting records.
+* **`appsettings.json`**: Stores the database connection string.
+
+### How to Start
+
+1. Create a `.env` file in the root folder with: `DB_PASSWORD=your_password`.
+2. Run the command: `docker compose up --build`.
+3. Open the API at: `https://localhost:7010/scalar/v1`.
+
+## 3. API Implementation
+
+We shared the development tasks to implement the following core logic:
+
+### 3.1 Grade Calculation (`POST /api/Students/calculate-grades`)
+
+* **Logic**: Reads student marks and assigns a grade (A-D) using the `GetGrade` helper.
+* **Performance**: Uses **Asynchronous I/O** (`OpenAsync`, `ReadAsync`) to keep the server fast and responsive.
+* **Verification**: Confirmed via **200 OK** responses in Scalar.
+
+### 3.2 Course Report (`GET /api/Students/report`)
+
+* **Logic**: Groups students by course and calculates the total count, average marks, and grade distribution (A, B, C, D).
+* **Efficiency**: Uses a single SQL query with `GROUP BY` to minimize database workload.
+
+## 4. Conclusion & Lessons Learned
+
+* **Docker is Essential**: It allowed us to use Windows-based SQL Server on macOS seamlessly and ensured a consistent environment for both team members.
+* **API as a Contract**: We learned that a Web API is a "contract" between client and server. By keeping the JSON format and endpoints strict, we can change the backend (like moving to the cloud) without breaking the client.
+* **Cloud Readiness**: Using the OSI Application Layer (HTTP/JSON) makes the system ready for modern "Local Cloud" or production environments.
+
+---
+
+The following are the instructions for the assignment.
+
+---
+
 ##### Assignment #3
+
 # Building an HTTP Web API Service
 
 ---
@@ -21,16 +82,16 @@ A **Web API** [1] is an API that is accessed over the internet using the HTTP pr
 
 Most modern Web APIs follow a design style called **REST (Representational State Transfer)** [3]. A **REST API** [3] (also called a RESTful API) is a Web API that uses standard HTTP methods to perform operations on resources:
 
-- **GET** - Retrieve data (e.g., get a list of students)
-- **POST** - Create new data (e.g., add a new student)
-- **PUT** - Update existing data (e.g., change a student's marks)
-- **DELETE** - Remove data (e.g., delete a student record)
+* **GET** - Retrieve data (e.g., get a list of students)
+* **POST** - Create new data (e.g., add a new student)
+* **PUT** - Update existing data (e.g., change a student's marks)
+* **DELETE** - Remove data (e.g., delete a student record)
 
 Each resource (such as "students") has a base URL, and different HTTP methods on that URL perform different operations:
 
-- `GET /api/Students` --> Returns a list of all students in JSON format
-- `POST /api/Students` --> Creates a new student by sending JSON data in the request body
-- `DELETE /api/Students/5` --> Deletes the student with ID 5
+* `GET /api/Students` --> Returns a list of all students in JSON format
+* `POST /api/Students` --> Creates a new student by sending JSON data in the request body
+* `DELETE /api/Students/5` --> Deletes the student with ID 5
 
 ---
 
@@ -63,8 +124,8 @@ To install extensions, click the **Extensions icon** on the left sidebar (or pre
 
 Install the following extensions for this project:
 
-- **C# Dev Kit** - by Microsoft. This is the essential extension for C# development. It provides IntelliSense (code auto-completion), syntax highlighting, debugging support, project management via the Solution Explorer panel, and the ability to run and debug your project directly from VS Code.
-- **C#** - by Microsoft. This extension is automatically installed with C# Dev Kit and provides the underlying C# language server for code analysis and navigation.
+* **C# Dev Kit** - by Microsoft. This is the essential extension for C# development. It provides IntelliSense (code auto-completion), syntax highlighting, debugging support, project management via the Solution Explorer panel, and the ability to run and debug your project directly from VS Code.
+* **C#** - by Microsoft. This extension is automatically installed with C# Dev Kit and provides the underlying C# language server for code analysis and navigation.
 
 ### Step 2: Install Git
 
@@ -93,7 +154,7 @@ You should see something like `git version 2.x.x`.
 cd C:\Users\YourName\Projects
 ```
 
-4. Clone the repository:
+1. Clone the repository:
 
 ```bash
 git clone https://github.com/kashifsanadar/data2410-api-v1.git
@@ -101,7 +162,7 @@ git clone https://github.com/kashifsanadar/data2410-api-v1.git
 
 See the starter project repository on your local computer.
 
-5. Open the cloned project in VS Code:
+1. Open the cloned project in VS Code:
 
 ```bash
 cd data2410-api-v1
@@ -211,6 +272,7 @@ Each student record has the following fields:
 | **Response** | JSON array of student objects |
 
 **Example Response:**
+
 ```json
 [
   {
@@ -257,6 +319,7 @@ Each student record has the following fields:
 | **Response** | The created student object with the assigned `id` |
 
 **Example Request Body:**
+
 ```json
 {
   "name": "John Doe",
@@ -302,12 +365,14 @@ Each student record has the following fields:
 | **Response** | JSON array of all students with their updated grades |
 
 **Expected Behavior:**
+
 1. Read all students from the database
 2. For each student, calculate the grade based on their marks
 3. Update the `Grade` column in the database for each student
 4. Return the complete list of students with their grades
 
 **Example Response:**
+
 ```json
 [
   {
@@ -340,11 +405,13 @@ Each student record has the following fields:
 | **Response** | JSON array of course report objects |
 
 **Expected Behavior:**
+
 1. Query the database to group students by course
 2. For each course, calculate: total number of students, average marks, and count of each grade (A, B, C, D)
 3. Return the report
 
 **Example Response:**
+
 ```json
 [
   {
@@ -404,6 +471,7 @@ public async Task<ActionResult<List<Student>>> CalculateGrades()
 ```
 
 Implement the logic to:
+
 1. Connect to the database and read all students
 2. Calculate the grade for each student based on their marks (use the `GetGrade()` helper method already provided in the controller at **lines 13-19**). You can call it as `GetGrade(student.Marks)` to get the grade for a student.
 3. Update the `Grade` column in the database for each student
@@ -423,6 +491,7 @@ public async Task<IActionResult> Report()
 ```
 
 Implement the logic to:
+
 1. Connect to the database and query students grouped by course
 2. For each course, calculate: total students, average marks, and the count of each grade (A, B, C, D)
 3. Return the course-wise report as shown in the example response above
@@ -435,7 +504,7 @@ Implement the logic to:
 
 A fully working version of this API is deployed at the following base URL (referred to as `<BASE_URL>` below):
 
-> **Base URL:** https://data2410-api-v120260409134150-enauczfkapc9efat.norwayeast-01.azurewebsites.net
+> **Base URL:** <https://data2410-api-v120260409134150-enauczfkapc9efat.norwayeast-01.azurewebsites.net>
 
 You can use this deployed API as a reference to understand the expected behavior of the endpoints you need to implement. Append the following paths to the base URL and open them in your browser:
 
@@ -452,10 +521,10 @@ You can use this deployed API as a reference to understand the expected behavior
 
 **Scalar** is an interactive API documentation tool that is built into this project. It reads the API's OpenAPI specification and generates a beautiful, interactive web page where you can:
 
-- **Browse** all available endpoints
-- **Read** the description, request parameters, and response format for each endpoint
-- **Send** test requests directly from the browser - no additional tools needed
-- **View** the response data, status codes, and headers
+* **Browse** all available endpoints
+* **Read** the description, request parameters, and response format for each endpoint
+* **Send** test requests directly from the browser - no additional tools needed
+* **View** the response data, status codes, and headers
 
 To use Scalar:
 
@@ -479,20 +548,21 @@ Alternatively, you can use **Postman** [10] - a popular API testing tool where y
    **ZIP file naming convention:** Use the first name of each group member separated by underscores.
 
    **Example:** If your group members are Alice, Bob, Charlie, and Diana, name your ZIP file:
+
    ```
    Alice_Bob_Charlie_Diana.zip
    ```
 
 2. **Short Report (PDF)** - A brief report (1-3 pages) containing:
-   - **Screenshots** of Scalar or Postman showing your implemented endpoints in action:
-     - A screenshot of the `POST /api/Students/calculate-grades` request and response
-     - A screenshot of the `GET /api/Students/report` request and response
+   * **Screenshots** of Scalar or Postman showing your implemented endpoints in action:
+     * A screenshot of the `POST /api/Students/calculate-grades` request and response
+     * A screenshot of the `GET /api/Students/report` request and response
 
 ### Group Work
 
-- You can work in groups of **maximum 4 students**
-- Clearly mention the **names and student IDs** of all group members in the report
-- Only **one submission per group** is required
+* You can work in groups of **maximum 4 students**
+* Clearly mention the **names and student IDs** of all group members in the report
+* Only **one submission per group** is required
 
 ---
 
@@ -500,16 +570,16 @@ Alternatively, you can use **Postman** [10] - a popular API testing tool where y
 
 | # | Description | URL |
 |---|-------------|-----|
-| 1 | Web API - MDN Web Docs | https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side/First_steps/Client-Server_overview |
-| 2 | JSON - MDN Web Docs | https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/JSON |
-| 3 | RESTful API Tutorial | https://restfulapi.net/ |
-| 4 | Visual Studio Code | https://code.visualstudio.com/ |
-| 5 | Git Downloads | https://git-scm.com/downloads |
-| 6 | Starter Project Repository | https://github.com/kashifsanadar/data2410-api-v1 |
-| 7 | .NET 10 SDK Download | https://dotnet.microsoft.com/download/dotnet/10.0 |
-| 8 | SQL Server Downloads | https://www.microsoft.com/en-us/sql-server/sql-server-downloads |
-| 9 | SQL Server Management Studio (SSMS) | https://learn.microsoft.com/en-us/ssms/download-sql-server-management-studio-ssms |
-| 10 | Postman | https://www.postman.com/downloads/ |
+| 1 | Web API - MDN Web Docs | <https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side/First_steps/Client-Server_overview> |
+| 2 | JSON - MDN Web Docs | <https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/JSON> |
+| 3 | RESTful API Tutorial | <https://restfulapi.net/> |
+| 4 | Visual Studio Code | <https://code.visualstudio.com/> |
+| 5 | Git Downloads | <https://git-scm.com/downloads> |
+| 6 | Starter Project Repository | <https://github.com/kashifsanadar/data2410-api-v1> |
+| 7 | .NET 10 SDK Download | <https://dotnet.microsoft.com/download/dotnet/10.0> |
+| 8 | SQL Server Downloads | <https://www.microsoft.com/en-us/sql-server/sql-server-downloads> |
+| 9 | SQL Server Management Studio (SSMS) | <https://learn.microsoft.com/en-us/ssms/download-sql-server-management-studio-ssms> |
+| 10 | Postman | <https://www.postman.com/downloads/> |
 
 ---
 
